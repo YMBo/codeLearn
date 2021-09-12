@@ -1,4 +1,4 @@
-import Vue from 'vue'
+import Vue from '../../vue/src/platforms/web/entry-runtime'
 import App from './App.vue'
 
 Vue.config.productionTip = false
