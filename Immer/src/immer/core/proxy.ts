@@ -113,6 +113,7 @@ export const objectTraps: ProxyHandler<ProxyState> = {
     }
     const value = source[prop];
     // 如果已修改过或非proxy，则直接返回值
+    // !isDraftable(value)很重要，{name:{age:1}} ,这种结构修改时draft.name.age，这个age是个number，不会被代理
     if (state.finalized_ || !isDraftable(value)) {
       return value;
     }
