@@ -153,8 +153,10 @@ function finalizeProperty(
     console.log(3333, path);
 
     // Drafts owned by `scope` are finalized here.
+    // 深度优先遍历子项，一个递归
     const res = finalize(rootScope, childValue, path);
     console.log('44444', path);
+    // targetObject[prop]=res
     set(targetObject, prop, res);
     // Drafts from another scope must prevented to be frozen
     // if we got a draft back from finalize, we're in a nested produce and shouldn't freeze
