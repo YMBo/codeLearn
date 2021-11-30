@@ -71,7 +71,7 @@ export function createProxyProxy<T extends Objectish>(
     base_: base,
     // The base proxy.
     draft_: null as any, // set below
-    // The base copy with any updated values.
+    // 会将每一层的base浅拷贝到copy上
     copy_: null,
     // Called by the `produce` function.
     revoke_: null as any,
@@ -128,11 +128,13 @@ export const objectTraps: ProxyHandler<ProxyState> = {
       // 浅拷贝base到copy
       prepareCopy(state);
       // 针对具体的属性做代理
-      return (state.copy_![prop as any] = createProxy(
+      state.copy_![prop as any] = createProxy(
         state.scope_.immer_,
         value,
         state,
-      ));
+      );
+      console.log('zzzzz', state.copy_![prop as any]);
+      return state.copy_![prop as any];
     }
 
     return value;
@@ -167,7 +169,6 @@ export const objectTraps: ProxyHandler<ProxyState> = {
       desc.set.call(state.draft_, value);
       return true;
     }
-
     // modified_ 表示是否修改过，第一次进来是false
     if (!state.modified_) {
       // the last check is because we need to be able to distinguish setting a non-existing to undefined (which is a change)
@@ -175,16 +176,19 @@ export const objectTraps: ProxyHandler<ProxyState> = {
 
       // 获取prop对应的value
       const current = peek(latest(state), prop);
-      console.log('最高点', current, prop, value);
+
       // special case, if we assigning the original value to a draft, we can ignore the assignment
 
-      // 这个是为了取原数据，而不参与get的计算
+      // 这个是为了取原数据，而不参与get的计算，针对的是如果current是proxy的情况
       const currentState: ProxyObjectState = current?.[DRAFT_STATE];
-      // 如果currentState 值存在 说明 current被代理了
+      // 如果currentState 值存在 说明 current已经被代理过了
       // 如果新值和旧值相等，则赋值返回
+      // draft.name = a.name;像这种给数据赋值但其实没变化的操作就会进这里，但是modified不会变，
+      // 也就意味着finalize.ts 81行，就是不会触发patchListener_
       if (currentState && currentState.base_ === value) {
-        console.log('???', value);
+        // 像这种整体赋值的，并不会标记modified=true
         state.copy_![prop] = value;
+        // 而且会认为这种操作相当于一个remove操作
         state.assigned_[prop] = false;
         return true;
       }
@@ -316,6 +320,7 @@ export function markChanged(state: ImmerState) {
   }
 }
 
+// 浅拷贝，只拷贝一层
 export function prepareCopy(state: { base_: any; copy_: any }) {
   if (!state.copy_) {
     state.copy_ = shallowCopy(state.base_);
